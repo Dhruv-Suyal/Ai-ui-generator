@@ -1,22 +1,30 @@
+import React from 'react';
+
 interface InputProps {
-  label: string;
+  label?: string;
   placeholder?: string;
-  type?: 'text' | 'email' | 'password' | 'number';
+  type?: string;
   value?: string;
-  onChange?: (val: string) => void;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export const Input = ({ label, placeholder, type = 'text', value, onChange }: InputProps) => {
-  return (
-    <div className="space-y-1.5 w-full">
-      <label className="text-sm font-medium text-slate-700 ml-1">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
-      />
-    </div>
-  );
-};
+export const Input: React.FC<InputProps> = ({ label, placeholder, type = "text", value, onChange }) => (
+  /* Added mb-6 for consistent spacing between stacked inputs */
+  <div className="w-full flex flex-col gap-1.5 mb-6 last:mb-0">
+    {label && (
+      <label className="text-[11px] font-black text-slate-500 ml-1 tracking-widest uppercase">
+        {label}
+      </label>
+    )}
+    <input
+      type={type}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm 
+                 transition-all duration-200 placeholder:text-slate-400 
+                 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none
+                 hover:border-slate-300"
+    />
+  </div>
+);

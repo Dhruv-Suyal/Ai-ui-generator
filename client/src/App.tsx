@@ -1,34 +1,98 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MainLayout } from './components/ui/MainLayout';
-import { ChatPanel } from './components/ui/chatPanel'; // Ensure casing matches filename
-import { CodePane } from './components/ui/codeEditor';     // Ensure casing matches filename
-import { PreviewPane } from './components/ui/livePreview'; // Ensure casing matches filename
+import { ChatPanel } from './components/ui/chatPanel'; 
+import { CodePane } from './components/ui/codeEditor';      
+import { PreviewPane } from './components/ui/livePreview'; 
+import { generateUI } from './services/ai';
 
-// 1. Updated Type to include 'id' and 'reasoning' (for the AI Explainer requirement)
-type Message = {
+export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  reasoning?: string; 
-};
+}
 
 export default function App() {
-  // 2. Added missing state for 'messages' and 'code'
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [code, setCode] = useState<string>("// Describe a UI to generate code...");
+  // 1. LAZY INITIALIZATION: Start state with data already inside it
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem('studio_chat');
+    return saved ? JSON.parse(saved) : [];
+  });
 
-  const handleSendMessage = (text: string) => {
-    // 3. Create the user message object with the correct type
-    const newUserMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: text
-    };
+  const [code, setCode] = useState<string>(() => {
+    return localStorage.getItem('studio_code') || '<Hero title="Design Studio" />';
+  });
 
-    setMessages(prev => [...prev, newUserMessage]);
+  // 2. OTHER STATES
+  const [input, setInput] = useState(''); 
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  const [historyStack, setHistoryStack] = useState<string[]>([]);
 
-    // This is where you'll trigger your Agent (Planner -> Generator -> Explainer)
-    console.log("User sent:", text);
+  
+  useEffect(() => {
+    localStorage.setItem('studio_chat', JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem('studio_code', code);
+  }, [code]);
+
+  // 4. ROLLBACK LOGIC
+  const handleRollback = () => {
+    if (historyStack.length === 0) return;
+    const newStack = [...historyStack];
+    const previousCode = newStack.pop(); 
+    
+    if (previousCode) {
+      setCode(previousCode);
+      setHistoryStack(newStack);
+      setMessages(prev => [...prev, { 
+        id: Date.now().toString(), 
+        role: 'assistant', 
+        content: "⏪ Restored the previous version." 
+      }]);
+    }
+  };
+
+  // 5. SEND MESSAGE LOGIC
+  const handleSendMessage = async () => {
+    if (!input.trim() || isGenerating) return;
+
+    
+    setHistoryStack(prev => [...prev, code]);
+
+    const userText = input;
+    setInput(''); 
+    
+    setMessages(prev => [...prev, { 
+      id: Date.now().toString(), 
+      role: 'user', 
+      content: userText 
+    }]);
+    
+    setIsGenerating(true);
+
+    try {
+      const result = await generateUI(userText);
+      if (result.code) {
+        setCode(result.code);
+        setActiveTab('preview'); // Auto-switch to preview on success
+      }
+      setMessages(prev => [...prev, { 
+        id: (Date.now() + 1).toString(), 
+        role: 'assistant', 
+        content: "Design updated successfully." 
+      }]);
+    } catch (err) {
+      console.error("AI Generation Error:", err);
+      setMessages(prev => [...prev, { 
+        id: Date.now().toString(), 
+        role: 'assistant', 
+        content: "I encountered an error. Please check your API key." 
+      }]);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -36,18 +100,50 @@ export default function App() {
       chatSlot={
         <ChatPanel 
           messages={messages} 
+          input={input}
+          setInput={setInput}
           onSendMessage={handleSendMessage} 
+          isLoading={isGenerating}
+          onRollback={handleRollback}
+          canRollback={historyStack.length > 0}
         />
       }
-      codeSlot={
-        <CodePane code={code} />
-      }
-      previewSlot={
-        <PreviewPane>
-          <div className="text-center p-20 text-slate-400 italic">
-            Describe a component in the chat to see it rendered here.
+      workspaceSlot={
+        <div className="flex flex-col h-full bg-[#0D0F12]">
+          {/* Workspace Tabs */}
+          <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#080A0C]">
+            <div className="flex bg-[#161920] p-1 rounded-xl border border-white/5">
+              <button 
+                onClick={() => setActiveTab('preview')} 
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === 'preview' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                Preview
+              </button>
+              <button 
+                onClick={() => setActiveTab('code')} 
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === 'code' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                Code
+              </button>
+            </div>
+            <div className="text-[10px] text-slate-500 font-mono hidden md:block uppercase tracking-widest">
+              {activeTab === 'preview' ? '● Live' : '○ Source'}
+            </div>
           </div>
-        </PreviewPane>
+
+          {/* Dynamic Content Area */}
+          <div className="flex-1 overflow-hidden">
+            {activeTab === 'preview' ? (
+              <PreviewPane code={code} />
+            ) : (
+              <CodePane code={code} />
+            )}
+          </div>
+        </div>
       }
     />
   );

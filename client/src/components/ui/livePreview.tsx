@@ -1,19 +1,32 @@
-import React from 'react';
 
-export const PreviewPane = ({ children }: { children: React.ReactNode }) => {
+import { LiveRunner } from './liveRunner';
+
+export const PreviewPane = ({ code }: { code: string }) => {
   return (
-    <div className="h-full w-full bg-slate-50 flex flex-col p-8 overflow-auto">
-      <div className="flex items-center gap-2 mb-6">
-        <div className="h-px flex-1 bg-slate-200" />
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Viewport Preview</span>
-        <div className="h-px flex-1 bg-slate-200" />
+    <div className="flex flex-col h-full bg-slate-50">
+      {/* Browser Chrome Header */}
+      <div className="h-12 bg-white border-b border-slate-200 flex items-center px-4 justify-between">
+        <div className="flex gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-slate-200" />
+          <div className="w-3 h-3 rounded-full bg-slate-200" />
+          <div className="w-3 h-3 rounded-full bg-slate-200" />
+        </div>
+        <div className="bg-slate-100 rounded-md px-10 py-1 text-[10px] text-slate-400 font-medium">
+          preview.design-engine.ai
+        </div>
+        <div className="flex gap-4">
+           <div className="w-4 h-4 bg-slate-100 rounded" />
+        </div>
       </div>
-      
-      {/* The Actual Rendered Content */}
-      <div className="w-full max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
-        {children || (
-          <div className="border-2 border-dashed border-slate-200 rounded-3xl h-64 flex items-center justify-center text-slate-400">
-            Waiting for AI to generate components...
+
+      {/* The Actual Render Area */}
+      <div className="flex-1 overflow-hidden relative">
+        {code ? (
+          <LiveRunner code={code} />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300">
+             <div className="w-16 h-16 border-2 border-dashed border-slate-200 rounded-full mb-4 animate-spin-slow" />
+             <p className="text-sm font-medium">Waiting for your instructions...</p>
           </div>
         )}
       </div>
